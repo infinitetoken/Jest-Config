@@ -9,6 +9,4 @@ on:
 
 jobs:
   quality:
-    uses: infinitetoken/Workflows/.github/workflows/npm-ci.yml@v0.1.4
-    with:
-      script: ci
+    uses: infinitetoken/Workflows/.github/workflows/npm-ci.yml@v1

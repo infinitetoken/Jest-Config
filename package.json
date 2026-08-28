@@ -23,16 +23,18 @@
   "type": "commonjs",
   "exports": {
     ".": "./index.cjs",
+    "./expo": "./expo.cjs",
+    "./node": "./index.cjs",
     "./react-native": "./react-native.cjs",
     "./setup": "./setup.cjs"
   },
   "files": [
     "index.cjs",
     "react-native.cjs",
+    "expo.cjs",
     "setup.cjs"
   ],
   "scripts": {
-    "ci": "npm run lint && npm test",
     "fix": "eslint . --fix",
     "lint": "eslint .",
     "release": "git push --follow-tags",
@@ -40,7 +42,8 @@
     "release:minor": "npm version minor && npm run release",
     "release:patch": "npm version patch && npm run release",
     "test": "node scripts/verify-exports.cjs",
-    "preversion": "npm run ci"
+    "verify": "npm run lint && npm test",
+    "preversion": "npm run verify"
   },
   "prettier": "@infinitetoken/eslint-config/prettier",
   "dependencies": {
@@ -48,16 +51,24 @@
   },
   "devDependencies": {
     "@infinitetoken/eslint-config": "^0.1.4",
+    "babel-jest": "^29.7.0",
+    "babel-preset-expo": "^13.2.5",
     "eslint": "^10.2.1",
+    "expo": "^57.0.17",
     "jest": "^30.4.2",
-    "jest-environment-jsdom": "^30.4.1"
+    "jest-environment-jsdom": "^30.4.1",
+    "jest-expo": "^57.0.4"
   },
   "peerDependencies": {
-    "jest": "^30.0.0",
-    "jest-environment-jsdom": "^30.0.0"
+    "jest": "^29.7.0 || ^30.0.0",
+    "jest-environment-jsdom": "^30.0.0",
+    "jest-expo": ">=57.0.0"
   },
   "peerDependenciesMeta": {
     "jest-environment-jsdom": {
+      "optional": true
+    },
+    "jest-expo": {
       "optional": true
     }
   },
