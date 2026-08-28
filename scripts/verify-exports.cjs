@@ -13,6 +13,12 @@ const base = createJestConfig()
 assert.equal(base.testEnvironment, 'node', 'base preset should default to node')
 assert.ok(base.setupFilesAfterEnv.length > 0, 'base preset should inject shared setup')
 assert.equal(base.transform['^.+\\.tsx?$'][1].tsconfig.types.includes('jest'), true, 'base preset should default tsconfig types')
+assert.equal(base.testTimeout, 10000, 'base preset should default testTimeout')
+assert.equal(base.verbose, true, 'base preset should default verbose')
+assert.deepEqual(base.collectCoverageFrom, ['src/**/*.ts', '!src/**/*.d.ts', '!src/index.ts', '!**/__tests__/**'], 'base preset should default collectCoverageFrom')
+assert.equal(base.coverageDirectory, 'coverage', 'base preset should default coverageDirectory')
+assert.deepEqual(base.coverageReporters, ['text', 'lcov', 'html'], 'base preset should default coverageReporters')
+assert.deepEqual(base.coverageThreshold, { global: { branches: 70, functions: 70, lines: 70, statements: 70 } }, 'base preset should default coverageThreshold to 70%')
 console.log('index.cjs: OK')
 
 const baseWithStringTsconfig = createJestConfig({ tsconfig: 'tsconfig.test.json' })
@@ -30,9 +36,18 @@ const rnWithStringTsconfig = createReactNativeJestConfig({ tsconfig: 'tsconfig.t
 assert.equal(rnWithStringTsconfig.transform['^.+\\.tsx?$'][1].tsconfig, 'tsconfig.test.json', 'react-native preset should also support the string tsconfig dialect')
 console.log('react-native.cjs (string tsconfig dialect): OK')
 
-const withOverrides = createJestConfig({ overrides: { forceExit: true, testTimeout: 10000 } })
+const withOverrides = createJestConfig({
+  overrides: {
+    forceExit: true,
+    testTimeout: 20000,
+    coverageThreshold: { global: { branches: 0, functions: 0, lines: 0, statements: 0 } },
+    collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.ts', '!**/__tests__/**']
+  }
+})
 assert.equal(withOverrides.forceExit, true, 'overrides should be shallow-merged last')
-assert.equal(withOverrides.testTimeout, 10000, 'overrides should be shallow-merged last')
+assert.equal(withOverrides.testTimeout, 20000, 'overrides should be able to deviate from the default testTimeout')
+assert.deepEqual(withOverrides.coverageThreshold, { global: { branches: 0, functions: 0, lines: 0, statements: 0 } }, 'overrides should be able to deviate from the default coverageThreshold')
+assert.deepEqual(withOverrides.collectCoverageFrom, ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.ts', '!**/__tests__/**'], 'overrides should be able to deviate from the default collectCoverageFrom (e.g. for .tsx source)')
 console.log('overrides: OK')
 
 const setupPath = require.resolve('@infinitetoken/jest-config/setup')

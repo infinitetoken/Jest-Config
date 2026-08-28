@@ -53,7 +53,9 @@ module.exports = require('@infinitetoken/jest-config/expo')({
 - `moduleNameMapper` — merged as-is (no shared defaults to merge against; always supply your own for the `/react-native` preset).
 - `tsconfig` — a string path (e.g. `'tsconfig.test.json'`) or an object merged on top of the shared ts-jest tsconfig defaults (`module`, `moduleResolution`, `types`, and for `/react-native` also `jsx`/`lib`).
 - `setupFilesAfterEnv` — appended **after** the shared `unhandledRejection` logger, for consumer-specific setup (e.g. a deterministic UUID mock) that needs to run in addition to it.
-- `overrides` — shallow-merged last; use for keys that are safe to overwrite wholesale (`forceExit`, `verbose`, `testTimeout`, coverage config). Coverage thresholds are not defaulted — only opt in per package.
+- `overrides` — shallow-merged last; use for keys that are safe to overwrite wholesale (`forceExit`, `testPathIgnorePatterns`), or to deviate from a default below (e.g. a lower `coverageThreshold` for a new package that hasn't caught up on tests yet).
+
+Defaulted (every package in the fleet used the same values, so these are no longer per-repo boilerplate — override via `overrides` only when a package genuinely needs something different): `testTimeout: 10000`, `verbose: true`, `collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/index.ts', '!**/__tests__/**']`, `coverageDirectory: 'coverage'`, `coverageReporters: ['text', 'lcov', 'html']`, `coverageThreshold` at 70% branches/functions/lines/statements globally. A package with `.tsx` source (e.g. a React Native library) will need to override `collectCoverageFrom` to include it — the default assumes plain `.ts`.
 
 ### Options — `./expo`
 

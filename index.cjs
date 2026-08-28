@@ -12,8 +12,11 @@
  * @param {string|object} [options.tsconfig] - a file path (e.g. 'tsconfig.test.json')
  *   or an inline fragment merged on top of the shared ts-jest tsconfig defaults
  * @param {string[]} [options.setupFilesAfterEnv] - appended after the shared setup.cjs
- * @param {object} [options.overrides] - shallow-merged last (coverage*, forceExit,
- *   verbose, testTimeout, testPathIgnorePatterns, or anything else safe to overwrite wholesale)
+ * @param {object} [options.overrides] - shallow-merged last (testPathIgnorePatterns,
+ *   forceExit, or anything else safe to overwrite wholesale). Also the escape hatch for
+ *   deviating from the defaults below (e.g. a lower coverageThreshold for a new package,
+ *   a wider collectCoverageFrom glob for a package with .tsx source, or a different
+ *   coverageDirectory/coverageReporters/testTimeout).
  * @returns {import('jest').Config}
  */
 function createJestConfig(options = {}) {
@@ -42,6 +45,19 @@ function createJestConfig(options = {}) {
       '^.+\\.tsx?$': [require.resolve('ts-jest'), tsJestOptions]
     },
     setupFilesAfterEnv: [require.resolve('./setup.cjs'), ...setupFilesAfterEnv],
+    testTimeout: 10000,
+    verbose: true,
+    collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/index.ts', '!**/__tests__/**'],
+    coverageDirectory: 'coverage',
+    coverageReporters: ['text', 'lcov', 'html'],
+    coverageThreshold: {
+      global: {
+        branches: 70,
+        functions: 70,
+        lines: 70,
+        statements: 70
+      }
+    },
     ...overrides
   }
 }
