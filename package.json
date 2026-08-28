@@ -1,0 +1,67 @@
+{
+  "name": "@infinitetoken/jest-config",
+  "version": "0.1.0",
+  "description": "Shared Jest configuration for InfiniteToken TypeScript packages",
+  "keywords": [
+    "config",
+    "jest",
+    "jestconfig",
+    "testing",
+    "ts-jest"
+  ],
+  "homepage": "https://github.com/infinitetoken/jest-config#readme",
+  "bugs": {
+    "url": "https://github.com/infinitetoken/jest-config/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/infinitetoken/jest-config.git"
+  },
+  "license": "MIT",
+  "author": "Jay Deaton",
+  "sideEffects": false,
+  "type": "commonjs",
+  "exports": {
+    ".": "./index.cjs",
+    "./react-native": "./react-native.cjs",
+    "./setup": "./setup.cjs"
+  },
+  "files": [
+    "index.cjs",
+    "react-native.cjs",
+    "setup.cjs"
+  ],
+  "scripts": {
+    "ci": "npm run lint && npm test",
+    "fix": "eslint . --fix",
+    "lint": "eslint .",
+    "release": "git push --follow-tags",
+    "release:major": "npm version major && npm run release",
+    "release:minor": "npm version minor && npm run release",
+    "release:patch": "npm version patch && npm run release",
+    "test": "node scripts/verify-exports.cjs",
+    "preversion": "npm run ci"
+  },
+  "prettier": "@infinitetoken/eslint-config/prettier",
+  "dependencies": {
+    "ts-jest": "^29.4.11"
+  },
+  "devDependencies": {
+    "@infinitetoken/eslint-config": "^0.1.4",
+    "eslint": "^10.2.1",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1"
+  },
+  "peerDependencies": {
+    "jest": "^30.0.0",
+    "jest-environment-jsdom": "^30.0.0"
+  },
+  "peerDependenciesMeta": {
+    "jest-environment-jsdom": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
