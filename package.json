@@ -1,6 +1,6 @@
 {
   "name": "@infinitetoken/jest-config",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Shared Jest configuration for InfiniteToken TypeScript packages",
   "keywords": [
     "config",
