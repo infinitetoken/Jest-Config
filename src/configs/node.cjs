@@ -1,3 +1,5 @@
+const { readPathAliasMapper } = require('../utils/pathAliases.cjs')
+
 /**
  * Base Jest preset for InfiniteToken npm packages (Node test environment).
  * Defaults to testEnvironment 'node' since most non-UI logic packages in the
@@ -8,7 +10,9 @@
  * @param {string[]} [options.roots]
  * @param {string[]} [options.testMatch]
  * @param {'node'|'jsdom'} [options.testEnvironment]
- * @param {Record<string, string>} [options.moduleNameMapper]
+ * @param {Record<string, string>} [options.moduleNameMapper] - merged on top of any
+ *   path-alias mapping auto-derived from tsconfig.json's own `paths` (see above) —
+ *   only needed for aliases NOT already in tsconfig.json, or to override the derived ones
  * @param {string|object} [options.tsconfig] - a file path (e.g. 'tsconfig.test.json')
  *   or an inline fragment merged on top of the shared ts-jest tsconfig defaults
  * @param {string[]} [options.setupFilesAfterEnv] - appended after the shared setup.cjs
@@ -40,7 +44,7 @@ function createJestConfig(options = {}) {
     roots,
     testMatch,
     testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/worktrees/'],
-    moduleNameMapper,
+    moduleNameMapper: { ...readPathAliasMapper(), ...moduleNameMapper },
     transform: {
       '^.+\\.tsx?$': [require.resolve('ts-jest'), tsJestOptions]
     },

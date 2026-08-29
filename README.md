@@ -13,6 +13,10 @@ Shared Jest configuration for InfiniteToken TypeScript packages.
 
 All three presets are factory functions, not static objects, because `moduleNameMapper` and the ts-jest `tsconfig` fragment need real merging rather than a shallow spread — every consumer's `moduleNameMapper` differs, and `tsconfig` can be either a file path (e.g. `'tsconfig.test.json'`) or an inline fragment merged on top of the shared defaults.
 
+### Path aliases (`@/*`) are picked up automatically
+
+If your repo's `tsconfig.json` declares a `paths` alias (e.g. `"@/*": ["./src/*"]`), all three presets read it and generate the equivalent Jest `moduleNameMapper` for you — no need to hand-write `moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' }` yourself, and no risk of it silently drifting out of sync with tsconfig.json if the alias ever changes. This is derived fresh from your `tsconfig.json` every time (via `ts-jest`'s own `pathsToModuleNameMapper`), not something you configure here. Your own `moduleNameMapper` option (and, for `/expo`, `paths`/`aliasCatchAll`) still merges on top for anything not already in tsconfig.json, or to override the derived mapping.
+
 `/node`/`/react-native` and `/expo` solve different problems and don't compose with each other: the library presets run `ts-jest` against isolated unit tests with hand-written `src/__mocks__/*` for native modules, while `/expo` runs a real app's own component tree through `jest-expo`'s Babel transform — an app doesn't need (and can't use) hand-written native-module mocks the way a library does.
 
 ## Usage
@@ -49,7 +53,7 @@ module.exports = require('@infinitetoken/jest-config/expo')({
 ### Options — `/node` / `/react-native`
 
 - `roots`, `testMatch`, `testEnvironment` — override the defaults shown above.
-- `moduleNameMapper` — merged as-is (no shared defaults to merge against; always supply your own for the `/react-native` preset).
+- `moduleNameMapper` — merged on top of any path alias auto-derived from your `tsconfig.json` (see above); supply your own for anything a `tsconfig.json` `paths` alias doesn't already cover (native-module mocks are the common case for `/react-native`).
 - `tsconfig` — a string path (e.g. `'tsconfig.test.json'`) or an object merged on top of the shared ts-jest tsconfig defaults (`module`, `moduleResolution`, `types`, and for `/react-native` also `jsx`/`lib`).
 - `setupFilesAfterEnv` — appended **after** the shared `unhandledRejection` logger, for consumer-specific setup (e.g. a deterministic UUID mock) that needs to run in addition to it.
 - `overrides` — shallow-merged last; use for keys that are safe to overwrite wholesale (`forceExit`, `testPathIgnorePatterns`), or to deviate from a default below (e.g. a lower `coverageThreshold` for a new package that hasn't caught up on tests yet).
@@ -60,9 +64,9 @@ Defaulted (every package in the fleet used the same values, so these are no long
 
 - `setupFilesAfterEnv` — your app's own setup files (typically just `'<rootDir>/jest.setup.ts'`), always supplied by you — never defaulted, since it's substantial per-app content (native module mocks, redux-persist mocks, etc.), not shareable boilerplate. **Not** auto-prefixed with the shared `unhandledRejection` logger the way the library presets are — every app's own `jest.setup.ts` already installs its own (usually covering `uncaughtException` too), so adding a second one would just be duplicate noise.
 - `gestureHandlerSetup` — appends `'<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'` after your setup files. Default `true`. Set `false` if the app doesn't depend on `react-native-gesture-handler`.
-- `paths` — directory segments under `src/` to alias, e.g. `['app', 'components', 'hooks']` generates `'^@/app/(.*)$': '<rootDir>/src/app/$1'` etc. for each.
-- `aliasCatchAll` — also add `'^@/(.*)$': '<rootDir>/src/$1'` as a fallback after the specific aliases. Default `false`.
-- `moduleNameMapper` — merged on top of the generated path aliases, for one-off exceptions (e.g. an alias pointing at a single file rather than a directory).
+- `paths` — directory segments under `src/` to alias, e.g. `['app', 'components', 'hooks']` generates `'^@/app/(.*)$': '<rootDir>/src/app/$1'` etc. for each. Only needed for an alias not already in `tsconfig.json`'s own `paths` (see [above](#path-aliases--are-picked-up-automatically)) — most apps that declare `"@/*": ["./src/*"]` in `tsconfig.json` need neither this nor `aliasCatchAll` at all.
+- `aliasCatchAll` — also add `'^@/(.*)$': '<rootDir>/src/$1'` as a fallback after the specific aliases. Default `false`. Same note as `paths` — usually superseded by the tsconfig-derived alias.
+- `moduleNameMapper` — merged on top of the generated path aliases (both the tsconfig-derived one and any from `paths`/`aliasCatchAll`), for one-off exceptions (e.g. an alias pointing at a single file rather than a directory).
 - `overrides` — shallow-merged last, same as the library presets.
 
 `transformIgnorePatterns: []` and a `.mjs` → `babel-jest` transform (for dual ESM/CJS packages like `@rific/*` that resolve to a `.mjs` file via their `"react-native"` export condition) are always on — every Expo app in the fleet needs both, and the `.mjs` gap in particular is exactly the kind of thing this package exists to keep every app from rediscovering independently.

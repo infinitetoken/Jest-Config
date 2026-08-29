@@ -23,7 +23,9 @@
  *   set false for an app that doesn't depend on react-native-gesture-handler.
  * @param {string[]} [options.paths] - directory segments under src/ to alias,
  *   e.g. ['app', 'components', 'hooks'] generates
- *   '^@/app/(.*)$': '<rootDir>/src/app/$1' etc. for each
+ *   '^@/app/(.*)$': '<rootDir>/src/app/$1' etc. for each. Only needed for an
+ *   alias NOT already in tsconfig.json's own `paths` — see below, which is
+ *   read automatically and needs no option at all in the common case.
  * @param {boolean} [options.aliasCatchAll] - also add '^@/(.*)$': '<rootDir>/src/$1'
  *   as a fallback after the specific path aliases. Default false.
  * @param {Record<string, string>} [options.moduleNameMapper] - merged on top of
@@ -36,6 +38,7 @@ function createExpoJestConfig(options = {}) {
   const { setupFilesAfterEnv = [], gestureHandlerSetup = true, paths = [], aliasCatchAll = false, moduleNameMapper = {}, overrides = {} } = options
 
   const { resolveBabelOptions } = require('jest-expo/src/resolveBabelOptions')
+  const { readPathAliasMapper } = require('../utils/pathAliases.cjs')
 
   const pathAliases = Object.fromEntries(paths.map((segment) => [`^@/${segment}/(.*)$`, `<rootDir>/src/${segment}/$1`]))
 
@@ -48,6 +51,7 @@ function createExpoJestConfig(options = {}) {
       '\\.mjs$': [require.resolve('babel-jest'), resolveBabelOptions(process.cwd())]
     },
     moduleNameMapper: {
+      ...readPathAliasMapper(),
       ...pathAliases,
       ...(aliasCatchAll ? { '^@/(.*)$': '<rootDir>/src/$1' } : {}),
       ...moduleNameMapper

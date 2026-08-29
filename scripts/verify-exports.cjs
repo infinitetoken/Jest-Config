@@ -1,9 +1,12 @@
 /* eslint-disable no-console */
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
 
-const createJestConfig = require('../src/node.cjs')
-const createReactNativeJestConfig = require('../src/react-native.cjs')
-const createExpoJestConfig = require('../src/expo.cjs')
+const createJestConfig = require('../src/configs/node.cjs')
+const createReactNativeJestConfig = require('../src/configs/react-native.cjs')
+const createExpoJestConfig = require('../src/configs/expo.cjs')
 
 assert.equal(typeof createJestConfig, 'function', 'node.cjs should export a function')
 assert.equal(typeof createReactNativeJestConfig, 'function', 'react-native.cjs should export a function')
@@ -74,3 +77,32 @@ const expoWithCatchAll = createExpoJestConfig({ aliasCatchAll: true, moduleNameM
 assert.equal(expoWithCatchAll.moduleNameMapper['^@/(.*)$'], '<rootDir>/src/$1', 'aliasCatchAll should add the fallback alias')
 assert.equal(expoWithCatchAll.moduleNameMapper['^@/types$'], '<rootDir>/src/types/index.ts', 'moduleNameMapper option should merge on top for one-off exceptions')
 console.log('expo.cjs (aliasCatchAll + moduleNameMapper overrides): OK')
+
+// path-alias auto-derivation from a consumer's own tsconfig.json `paths` — reads
+// process.cwd(), so these tests run against real scratch tsconfig.json fixtures with
+// process.chdir(), always restored via try/finally even if an assertion throws.
+const originalCwd = process.cwd()
+const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jest-config-path-alias-test-'))
+try {
+  fs.writeFileSync(path.join(scratchDir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { paths: { '@/*': ['./src/*'] } } }))
+  process.chdir(scratchDir)
+
+  const nodeWithAlias = createJestConfig()
+  assert.deepEqual(nodeWithAlias.moduleNameMapper, { '^@/(.*)$': '<rootDir>/src/$1' }, 'node.cjs should auto-derive moduleNameMapper from tsconfig.json paths')
+  console.log('node.cjs (tsconfig paths auto-derivation): OK')
+
+  const nodeAliasPlusExplicit = createJestConfig({ moduleNameMapper: { '^special$': '<rootDir>/special.ts' } })
+  assert.deepEqual(nodeAliasPlusExplicit.moduleNameMapper, { '^@/(.*)$': '<rootDir>/src/$1', '^special$': '<rootDir>/special.ts' }, 'explicit moduleNameMapper should merge on top of the derived alias, not replace it')
+  console.log('node.cjs (tsconfig-derived alias + explicit moduleNameMapper merge): OK')
+
+  const expoWithDerivedAlias = createExpoJestConfig()
+  assert.equal(expoWithDerivedAlias.moduleNameMapper['^@/(.*)$'], '<rootDir>/src/$1', 'expo.cjs should also auto-derive from tsconfig.json paths, despite not composing on node.cjs')
+  console.log('expo.cjs (tsconfig paths auto-derivation): OK')
+} finally {
+  process.chdir(originalCwd)
+  fs.rmSync(scratchDir, { recursive: true, force: true })
+}
+
+const noAliasConfig = createJestConfig()
+assert.deepEqual(noAliasConfig.moduleNameMapper, {}, "node.cjs should default to an empty moduleNameMapper when the repo has no tsconfig.json paths (this repo's own tsconfig.json has none)")
+console.log('node.cjs (no tsconfig paths — empty moduleNameMapper, no crash): OK')

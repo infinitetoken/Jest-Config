@@ -22,10 +22,10 @@
   "sideEffects": false,
   "type": "commonjs",
   "exports": {
-    "./expo": "./src/expo.cjs",
-    "./node": "./src/node.cjs",
-    "./react-native": "./src/react-native.cjs",
-    "./setup": "./src/setup.cjs"
+    "./expo": "./src/configs/expo.cjs",
+    "./node": "./src/configs/node.cjs",
+    "./react-native": "./src/configs/react-native.cjs",
+    "./setup": "./src/configs/setup.cjs"
   },
   "files": [
     "src"
@@ -53,12 +53,14 @@
     "expo": "^57.0.17",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
-    "jest-expo": "^57.0.4"
+    "jest-expo": "^57.0.4",
+    "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "jest": "^29.7.0 || ^30.0.0",
     "jest-environment-jsdom": "^30.0.0",
-    "jest-expo": ">=57.0.0"
+    "jest-expo": ">=57.0.0",
+    "typescript": "^5.0.0 || ^6.0.0"
   },
   "peerDependenciesMeta": {
     "jest-environment-jsdom": {
