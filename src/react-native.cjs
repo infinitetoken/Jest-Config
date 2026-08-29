@@ -1,12 +1,12 @@
-const createJestConfig = require('./index.cjs')
+const createJestConfig = require('./node.cjs')
 
 /**
  * Jest preset for InfiniteToken UI/component packages (jsdom test environment).
  * Composes on the base Node preset. moduleNameMapper is never defaulted here —
  * every package mocks a different set of native modules — so it must always
- * be supplied by the caller. See index.cjs for the full option shape.
+ * be supplied by the caller. See node.cjs for the full option shape.
  *
- * @param {object} [options] - same shape as index.cjs's options
+ * @param {object} [options] - same shape as node.cjs's options
  * @returns {import('jest').Config}
  */
 function createReactNativeJestConfig(options = {}) {

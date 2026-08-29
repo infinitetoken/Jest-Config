@@ -1,6 +1,6 @@
 /**
  * Jest preset for InfiniteToken Expo apps. Standalone — does NOT compose on
- * index.cjs, since jest-expo's Babel-based transform strategy (run real
+ * node.cjs, since jest-expo's Babel-based transform strategy (run real
  * react-native/native-module source through Babel) has nothing in common
  * with the ts-jest + hand-written __mocks__ strategy the library presets use.
  *

@@ -1,11 +1,11 @@
 /* eslint-disable no-console */
 const assert = require('node:assert/strict')
 
-const createJestConfig = require('../index.cjs')
-const createReactNativeJestConfig = require('../react-native.cjs')
-const createExpoJestConfig = require('../expo.cjs')
+const createJestConfig = require('../src/node.cjs')
+const createReactNativeJestConfig = require('../src/react-native.cjs')
+const createExpoJestConfig = require('../src/expo.cjs')
 
-assert.equal(typeof createJestConfig, 'function', 'index.cjs should export a function')
+assert.equal(typeof createJestConfig, 'function', 'node.cjs should export a function')
 assert.equal(typeof createReactNativeJestConfig, 'function', 'react-native.cjs should export a function')
 assert.equal(typeof createExpoJestConfig, 'function', 'expo.cjs should export a function')
 
@@ -19,11 +19,11 @@ assert.deepEqual(base.collectCoverageFrom, ['src/**/*.ts', '!src/**/*.d.ts', '!s
 assert.equal(base.coverageDirectory, 'coverage', 'base preset should default coverageDirectory')
 assert.deepEqual(base.coverageReporters, ['text', 'lcov', 'html'], 'base preset should default coverageReporters')
 assert.deepEqual(base.coverageThreshold, { global: { branches: 70, functions: 70, lines: 70, statements: 70 } }, 'base preset should default coverageThreshold to 70%')
-console.log('index.cjs: OK')
+console.log('node.cjs: OK')
 
 const baseWithStringTsconfig = createJestConfig({ tsconfig: 'tsconfig.test.json' })
 assert.equal(baseWithStringTsconfig.transform['^.+\\.tsx?$'][1].tsconfig, 'tsconfig.test.json', 'string tsconfig should pass through untouched')
-console.log('index.cjs (string tsconfig dialect): OK')
+console.log('node.cjs (string tsconfig dialect): OK')
 
 const rn = createReactNativeJestConfig()
 assert.equal(rn.testEnvironment, 'jsdom', 'react-native preset should default to jsdom')
@@ -55,8 +55,8 @@ assert.ok(setupPath, 'setup.cjs should be independently resolvable')
 console.log('setup.cjs: OK')
 
 const createNodeJestConfig = require('@infinitetoken/jest-config/node')
-assert.equal(createNodeJestConfig, createJestConfig, './node should resolve to the exact same module as the bare specifier')
-console.log('index.cjs (./node alias): OK')
+assert.equal(createNodeJestConfig, createJestConfig, './node should resolve to the exact same module as the direct src/node.cjs require')
+console.log('./node (subpath resolution): OK')
 
 const expo = createExpoJestConfig({ paths: ['components', 'hooks'], setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'] })
 assert.equal(expo.preset, 'jest-expo', 'expo preset should use jest-expo')

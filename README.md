@@ -10,7 +10,6 @@ Shared Jest configuration for InfiniteToken TypeScript packages.
 | `@infinitetoken/jest-config/react-native` | React Native / UI **library** packages, `testEnvironment: 'jsdom'`, ts-jest, composes on `/node` |
 | `@infinitetoken/jest-config/expo` | Expo **apps**, `preset: 'jest-expo'` (Babel-based) — standalone, does not compose on `/node` |
 | `@infinitetoken/jest-config/setup` | The shared `unhandledRejection` logger, independently resolvable if you're not using a factory that already injects it |
-| `@infinitetoken/jest-config` (bare) | Alias for `/node`, kept for brevity and for existing consumers — `/node` is the documented name going forward, symmetric with `/react-native` and `/expo` |
 
 All three presets are factory functions, not static objects, because `moduleNameMapper` and the ts-jest `tsconfig` fragment need real merging rather than a shallow spread — every consumer's `moduleNameMapper` differs, and `tsconfig` can be either a file path (e.g. `'tsconfig.test.json'`) or an inline fragment merged on top of the shared defaults.
 

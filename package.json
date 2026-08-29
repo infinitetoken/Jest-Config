@@ -22,17 +22,13 @@
   "sideEffects": false,
   "type": "commonjs",
   "exports": {
-    ".": "./index.cjs",
-    "./expo": "./expo.cjs",
-    "./node": "./index.cjs",
-    "./react-native": "./react-native.cjs",
-    "./setup": "./setup.cjs"
+    "./expo": "./src/expo.cjs",
+    "./node": "./src/node.cjs",
+    "./react-native": "./src/react-native.cjs",
+    "./setup": "./src/setup.cjs"
   },
   "files": [
-    "index.cjs",
-    "react-native.cjs",
-    "expo.cjs",
-    "setup.cjs"
+    "src"
   ],
   "scripts": {
     "fix": "eslint . --fix",
