@@ -19,8 +19,8 @@ const { readPathAliasMapper } = require('../utils/pathAliases.cjs')
  * @param {object} [options.overrides] - shallow-merged last (testPathIgnorePatterns,
  *   forceExit, or anything else safe to overwrite wholesale). Also the escape hatch for
  *   deviating from the defaults below (e.g. a lower coverageThreshold for a new package,
- *   a wider collectCoverageFrom glob for a package with .tsx source, or a different
- *   coverageDirectory/coverageReporters/testTimeout).
+ *   a narrower collectCoverageFrom for a package that doesn't use the src/ convention,
+ *   or a different coverageDirectory/coverageReporters/testTimeout).
  * @returns {import('jest').Config}
  */
 function createJestConfig(options = {}) {
@@ -51,7 +51,17 @@ function createJestConfig(options = {}) {
     setupFilesAfterEnv: [require.resolve('./setup.cjs'), ...setupFilesAfterEnv],
     testTimeout: 10000,
     verbose: true,
-    collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/index.ts', '!**/__tests__/**'],
+    // .tsx is included unconditionally: for a pure-.ts package the glob just matches the
+    // same files it always did (a strict superset, never a behavior change), while every
+    // React/React Native package in the fleet has real .tsx source that this would otherwise
+    // silently exclude from coverage measurement entirely (not "0% covered" — literally
+    // absent from the report, verified once as the cause of a misleadingly-optimistic
+    // coverage number in a repo that hadn't yet added the override this used to require).
+    // No '!**/__tests__/**' entry: verified empirically (a from-scratch plain-JS Jest project,
+    // no ts-jest/tsconfig involved) that Jest already excludes any file matched by `testMatch`
+    // from coverage collection regardless of what collectCoverageFrom's glob matches — the
+    // entry never did anything, it was carried forward unverified.
+    collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.ts'],
     coverageDirectory: 'coverage',
     coverageReporters: ['text', 'lcov', 'html'],
     coverageThreshold: {
