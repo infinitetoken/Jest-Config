@@ -34,6 +34,7 @@ assert.equal(rn.testEnvironment, 'jsdom', 'react-native preset should default to
 const rnTsconfig = rn.transform['^.+\\.tsx?$'][1].tsconfig
 assert.equal(rnTsconfig.jsx, 'react-jsx', 'react-native preset should default jsx to react-jsx')
 assert.deepEqual(rnTsconfig.lib, ['ES2020', 'DOM'], 'react-native preset should default lib to ES2020+DOM')
+assert.deepEqual(rn.testEnvironmentOptions, { customExportConditions: [] }, 'react-native preset should default customExportConditions to [] so jsdom does not activate the "browser" exports condition on packages that point it at raw source (e.g. @tastic/core)')
 console.log('react-native.cjs: OK')
 
 const rnWithStringTsconfig = createReactNativeJestConfig({ tsconfig: 'tsconfig.test.json' })

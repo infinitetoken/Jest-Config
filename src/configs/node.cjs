@@ -17,6 +17,10 @@ const { coverageDefaults } = require('../utils/coverageDefaults.cjs')
  * @param {string|object} [options.tsconfig] - a file path (e.g. 'tsconfig.test.json')
  *   or an inline fragment merged on top of the shared ts-jest tsconfig defaults
  * @param {string[]} [options.setupFilesAfterEnv] - appended after the shared setup.cjs
+ * @param {object} [options.testEnvironmentOptions] - passed straight through to the configured
+ *   testEnvironment (e.g. jsdom's own customExportConditions) — plain 'node' ignores this, but
+ *   ./react-native.cjs defaults it, so it has to be a real named option here, not just left to
+ *   fall through, or it gets silently dropped instead of merged
  * @param {object} [options.overrides] - shallow-merged last (testPathIgnorePatterns,
  *   forceExit, or anything else safe to overwrite wholesale). Also the escape hatch for
  *   deviating from the defaults below (e.g. a lower coverageThreshold for a new package,
@@ -25,7 +29,7 @@ const { coverageDefaults } = require('../utils/coverageDefaults.cjs')
  * @returns {import('jest').Config}
  */
 function createJestConfig(options = {}) {
-  const { roots = ['<rootDir>/src'], testMatch = ['**/__tests__/**/*.test.ts'], testEnvironment = 'node', moduleNameMapper = {}, tsconfig, setupFilesAfterEnv = [], overrides = {} } = options
+  const { roots = ['<rootDir>/src'], testMatch = ['**/__tests__/**/*.test.ts'], testEnvironment = 'node', testEnvironmentOptions = {}, moduleNameMapper = {}, tsconfig, setupFilesAfterEnv = [], overrides = {} } = options
 
   const tsJestOptions =
     typeof tsconfig === 'string'
@@ -42,6 +46,7 @@ function createJestConfig(options = {}) {
 
   return {
     testEnvironment,
+    testEnvironmentOptions,
     roots,
     testMatch,
     testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/worktrees/'],
