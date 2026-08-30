@@ -39,16 +39,30 @@ module.exports = require('@infinitetoken/jest-config/react-native')({
 })
 ```
 
-```js
-// jest.config.cjs — Expo app
-module.exports = require('@infinitetoken/jest-config/expo')({
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+```ts
+// jest.config.ts — Expo app (real apps in this fleet use .ts, not .cjs, for jest config)
+import type { Config } from 'jest'
+
+import createExpoJestConfig from '@infinitetoken/jest-config/expo'
+
+// The explicit `Config` annotation is required, not stylistic — see "Expo app gotchas" below.
+const config: Config = createExpoJestConfig({
+  setupFilesAfterEnv: ['./jest.setup.ts'],
   paths: ['app', 'components', 'constants', 'hooks', 'redux', 'utils'],
   moduleNameMapper: {
     '^@/types$': '<rootDir>/src/types/index.ts'
   }
 })
+
+export default config
 ```
+
+### Expo app gotchas (`jest.config.ts`)
+
+Two non-obvious things every Expo app hits when adopting `/expo`, confirmed by migrating a real app (Crumby) rather than assumed:
+
+1. **`export default createExpoJestConfig(...)` directly, with no type annotation, fails to typecheck** (`TS4082`/`TS2883`, "cannot be named without a reference to ConfigGlobals" or similar). `import type {Config} from 'jest'` — Jest's own documented pattern — is itself not fully portable for TypeScript's declaration-emit checking; it structurally touches unexported internal types (`@jest/types`' `ConfigGlobals`, several `istanbul-reports` option types) that can't be printed in an emitted `.d.ts`. This only bites under `declaration: true` (this fleet's own base tsconfig preset), and only when the export's type is *inferred* through a call rather than stated directly. Assigning to an explicitly-typed `const config: Config = ...` first sidesteps it — TypeScript then only needs to reference `Config` by its (importable) name, not print its structure. Confirmed with a minimal reproduction outside any app before writing this.
+2. **Jest loads `.ts` config files via `ts-node`, which cannot resolve a tsconfig `extends` through a package's `exports` map at all** — confirmed directly, failing even on `extends: "@infinitetoken/tsconfig"` (the bare export), regardless of the installed `typescript` version (which resolves the identical `extends` fine on its own via plain `tsc` — this is a `ts-node@10.9.2`-specific gap, not a TypeScript version issue). Since a real Expo app's own `tsconfig.json` extends `@infinitetoken/tsconfig/expo` the same way, `ts-node` fails to even load `jest.config.ts` with `TS6053: File '@infinitetoken/tsconfig/expo' not found` the moment both migrations land together. Fix: a separate, deliberately non-extending `tsconfig.jest.json` for `ts-node`'s own use, wired in via `TS_NODE_PROJECT=./tsconfig.jest.json` on the `test`/`test:watch` scripts — decouples `jest.config.ts`'s own transpilation from the real app tsconfig, which keeps extending the shared preset normally for actual typechecking/builds. See Crumby's `tsconfig.jest.json` for a working minimal example.
 
 ### Options — `/node` / `/react-native`
 

@@ -22,9 +22,18 @@
   "sideEffects": false,
   "type": "commonjs",
   "exports": {
-    "./expo": "./src/configs/expo.cjs",
-    "./node": "./src/configs/node.cjs",
-    "./react-native": "./src/configs/react-native.cjs",
+    "./expo": {
+      "types": "./src/configs/expo.d.ts",
+      "default": "./src/configs/expo.cjs"
+    },
+    "./node": {
+      "types": "./src/configs/node.d.ts",
+      "default": "./src/configs/node.cjs"
+    },
+    "./react-native": {
+      "types": "./src/configs/react-native.d.ts",
+      "default": "./src/configs/react-native.cjs"
+    },
     "./setup": "./src/configs/setup.cjs"
   },
   "files": [
