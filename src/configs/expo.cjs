@@ -39,6 +39,7 @@ function createExpoJestConfig(options = {}) {
 
   const { resolveBabelOptions } = require('jest-expo/src/resolveBabelOptions')
   const { readPathAliasMapper } = require('../utils/pathAliases.cjs')
+  const { coverageDefaults } = require('../utils/coverageDefaults.cjs')
 
   const pathAliases = Object.fromEntries(paths.map((segment) => [`^@/${segment}/(.*)$`, `<rootDir>/src/${segment}/$1`]))
 
@@ -56,6 +57,19 @@ function createExpoJestConfig(options = {}) {
       ...(aliasCatchAll ? { '^@/(.*)$': '<rootDir>/src/$1' } : {}),
       ...moduleNameMapper
     },
+    collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
+    // collectCoverage/coverageDirectory/coverageReporters/coverageThreshold come from
+    // coverageDefaults.cjs, shared verbatim with ./node — one universal fleet-wide contract
+    // (70% target, actually enforced) instead of two independently-maintained copies that could
+    // drift from each other. Unlike ./node's own use of it, this hasn't been verified against a
+    // real consuming Expo app yet this session — every "Expo-*" repo audited so far turned out to
+    // be a published npm library on the ./react-native preset, not an actual app on this one.
+    // collectCoverageFrom's glob mirrors the library presets' src/ convention and this file's own
+    // `paths` option doc ("directory segments under src/"), but a real app's entry-point
+    // structure (App.tsx at root, expo-router's app/ directory, etc.) may need `overrides` to get
+    // right. Treat the whole coverage setup as the target, not a verified-correct default, until
+    // a real app migration confirms or corrects it.
+    ...coverageDefaults,
     ...overrides
   }
 }

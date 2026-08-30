@@ -1,4 +1,5 @@
 const { readPathAliasMapper } = require('../utils/pathAliases.cjs')
+const { coverageDefaults } = require('../utils/coverageDefaults.cjs')
 
 /**
  * Base Jest preset for InfiniteToken npm packages (Node test environment).
@@ -62,16 +63,17 @@ function createJestConfig(options = {}) {
     // from coverage collection regardless of what collectCoverageFrom's glob matches — the
     // entry never did anything, it was carried forward unverified.
     collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.ts'],
-    coverageDirectory: 'coverage',
-    coverageReporters: ['text', 'lcov', 'html'],
-    coverageThreshold: {
-      global: {
-        branches: 70,
-        functions: 70,
-        lines: 70,
-        statements: 70
-      }
-    },
+    // collectCoverage/coverageDirectory/coverageReporters/coverageThreshold come from
+    // coverageDefaults.cjs, shared verbatim with ./expo — one universal fleet-wide contract
+    // (70% target, actually enforced) instead of two independently-maintained copies that could
+    // drift from each other. See that file for why collectCoverage: true matters: it's what
+    // makes coverageThreshold real, since no consumer's test/verify script (or the shared CI
+    // workflow) ever passed --coverage — the threshold used to be pure documentation, checked by
+    // nothing, in CI or locally, ever. A consumer that wants a fast, uninstrumented watch loop
+    // should pass `--coverage=false` on that one invocation (e.g. `"test:watch": "jest --watchAll
+    // --coverage=false"`) rather than disabling this default, so enforcement stays real
+    // everywhere it isn't explicitly opted out of.
+    ...coverageDefaults,
     ...overrides
   }
 }

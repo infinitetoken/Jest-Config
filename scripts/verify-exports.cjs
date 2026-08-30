@@ -22,6 +22,7 @@ assert.deepEqual(base.collectCoverageFrom, ['src/**/*.{ts,tsx}', '!src/**/*.d.ts
 assert.equal(base.coverageDirectory, 'coverage', 'base preset should default coverageDirectory')
 assert.deepEqual(base.coverageReporters, ['text', 'lcov', 'html'], 'base preset should default coverageReporters')
 assert.deepEqual(base.coverageThreshold, { global: { branches: 70, functions: 70, lines: 70, statements: 70 } }, 'base preset should default coverageThreshold to 70%')
+assert.equal(base.collectCoverage, true, 'base preset should default collectCoverage to true — without this, coverageThreshold is never actually checked by plain `jest`, only by an explicit --coverage flag nobody was passing fleet-wide')
 console.log('node.cjs: OK')
 
 const baseWithStringTsconfig = createJestConfig({ tsconfig: 'tsconfig.test.json' })
@@ -67,6 +68,8 @@ assert.deepEqual(expo.setupFilesAfterEnv, ['<rootDir>/jest.setup.ts', '<rootDir>
 assert.deepEqual(expo.transformIgnorePatterns, [], 'expo preset should transform all of node_modules')
 assert.equal(expo.moduleNameMapper['^@/components/(.*)$'], '<rootDir>/src/components/$1', 'expo preset should generate path aliases from the paths option')
 assert.ok(expo.transform['\\.mjs$'], 'expo preset should add a .mjs transform for dual ESM/CJS packages')
+assert.equal(expo.collectCoverage, true, 'expo preset should default collectCoverage to true, same as node.cjs')
+assert.deepEqual(expo.coverageThreshold, base.coverageThreshold, 'expo preset should share the exact same coverageThreshold object as node.cjs (both from coverageDefaults.cjs) — one universal target, not two independently-maintained copies')
 console.log('expo.cjs: OK')
 
 const expoNoGestureHandler = createExpoJestConfig({ gestureHandlerSetup: false })
