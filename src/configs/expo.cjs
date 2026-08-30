@@ -57,19 +57,26 @@ function createExpoJestConfig(options = {}) {
       ...(aliasCatchAll ? { '^@/(.*)$': '<rootDir>/src/$1' } : {}),
       ...moduleNameMapper
     },
+    // Scoped, but NOT enforced — this is a real, load-bearing difference from ./node/./react-
+    // native, not an oversight. collectCoverageFrom alone is a genuine, verified improvement:
+    // without it, `jest --coverage` reports on every file Jest happens to touch during a test
+    // run, including plain asset imports (confirmed directly against a real consuming app —
+    // .wav sound files were showing up in the coverage table before this scoping existed).
+    // collectCoverage/coverageThreshold from coverageDefaults.cjs are deliberately NOT spread
+    // in here, unlike ./node — verified directly against Expo-Starter (the fleet's actual
+    // reference app, not a scratch fixture): real coverage came back 11.57/4.82/11.35/8.97%
+    // (statements/branches/functions/lines), nowhere near the 70% floor that's correctly
+    // enforced for library packages. Apps and libraries aren't the same category of consumer
+    // here — a small, focused, publish-quality library hitting 90%+ is the norm this session
+    // confirmed across a dozen-plus repos, but a sprawling app with many hard-to-unit-test UI
+    // screens realistically doesn't, and forcing the same hard floor by default would break
+    // `npm test` for every real app the moment it upgraded. Coverage collection/enforcement
+    // stays fully available via `overrides.collectCoverage`/`overrides.coverageThreshold` for
+    // an app that's specifically ready for it — just not force-defaulted the way it is for
+    // ./node/./react-native.
     collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
-    // collectCoverage/coverageDirectory/coverageReporters/coverageThreshold come from
-    // coverageDefaults.cjs, shared verbatim with ./node — one universal fleet-wide contract
-    // (70% target, actually enforced) instead of two independently-maintained copies that could
-    // drift from each other. Unlike ./node's own use of it, this hasn't been verified against a
-    // real consuming Expo app yet this session — every "Expo-*" repo audited so far turned out to
-    // be a published npm library on the ./react-native preset, not an actual app on this one.
-    // collectCoverageFrom's glob mirrors the library presets' src/ convention and this file's own
-    // `paths` option doc ("directory segments under src/"), but a real app's entry-point
-    // structure (App.tsx at root, expo-router's app/ directory, etc.) may need `overrides` to get
-    // right. Treat the whole coverage setup as the target, not a verified-correct default, until
-    // a real app migration confirms or corrects it.
-    ...coverageDefaults,
+    coverageDirectory: coverageDefaults.coverageDirectory,
+    coverageReporters: coverageDefaults.coverageReporters,
     ...overrides
   }
 }

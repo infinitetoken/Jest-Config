@@ -69,8 +69,11 @@ assert.deepEqual(expo.setupFilesAfterEnv, ['<rootDir>/jest.setup.ts', '<rootDir>
 assert.deepEqual(expo.transformIgnorePatterns, [], 'expo preset should transform all of node_modules')
 assert.equal(expo.moduleNameMapper['^@/components/(.*)$'], '<rootDir>/src/components/$1', 'expo preset should generate path aliases from the paths option')
 assert.ok(expo.transform['\\.mjs$'], 'expo preset should add a .mjs transform for dual ESM/CJS packages')
-assert.equal(expo.collectCoverage, true, 'expo preset should default collectCoverage to true, same as node.cjs')
-assert.deepEqual(expo.coverageThreshold, base.coverageThreshold, 'expo preset should share the exact same coverageThreshold object as node.cjs (both from coverageDefaults.cjs) — one universal target, not two independently-maintained copies')
+assert.deepEqual(expo.collectCoverageFrom, ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'], 'expo preset should scope collectCoverageFrom the same way node.cjs does, so plain asset imports (e.g. .wav files) never leak into a coverage report')
+assert.equal(expo.coverageDirectory, base.coverageDirectory, 'expo preset should share the same coverageDirectory as node.cjs (harmless metadata, safe to share even without enforcement)')
+assert.deepEqual(expo.coverageReporters, base.coverageReporters, 'expo preset should share the same coverageReporters as node.cjs')
+assert.equal(expo.collectCoverage, undefined, 'expo preset should NOT default collectCoverage to true — verified against a real consuming app that library-level 70% enforcement would break every real app on upgrade, apps and libraries are not the same category of consumer here')
+assert.equal(expo.coverageThreshold, undefined, 'expo preset should NOT default a coverageThreshold — same reasoning as collectCoverage above')
 console.log('expo.cjs: OK')
 
 const expoNoGestureHandler = createExpoJestConfig({ gestureHandlerSetup: false })
@@ -105,6 +108,27 @@ try {
 } finally {
   process.chdir(originalCwd)
   fs.rmSync(scratchDir, { recursive: true, force: true })
+}
+
+// A catch-all declared BEFORE more specific segment aliases (a real pattern found in a real
+// consuming app's tsconfig.json, not the single-entry fixture above) must not let the catch-all
+// win — this is exactly the bug that silently resolved every '@/components/*' import to the
+// project root instead of src/, confirmed against a real app before being fixed.
+const overlapScratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jest-config-path-alias-overlap-test-'))
+try {
+  fs.writeFileSync(path.join(overlapScratchDir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { paths: { '@/*': ['./*'], '@/components/*': ['./src/components/*'] } } }))
+  process.chdir(overlapScratchDir)
+
+  const { moduleNameMapper } = createJestConfig()
+  const keys = Object.keys(moduleNameMapper)
+  const specificIndex = keys.indexOf('^@/components/(.*)$')
+  const catchAllIndex = keys.indexOf('^@/(.*)$')
+  assert.ok(specificIndex !== -1 && catchAllIndex !== -1, 'both the specific and catch-all patterns should be present in the derived mapper')
+  assert.ok(specificIndex < catchAllIndex, "a more specific path alias must be ordered before a catch-all, even when tsconfig declares the catch-all first, or Jest's first-match-wins resolution silently picks the wrong one")
+  console.log('node.cjs (tsconfig paths — specific-before-catch-all ordering): OK')
+} finally {
+  process.chdir(originalCwd)
+  fs.rmSync(overlapScratchDir, { recursive: true, force: true })
 }
 
 const noAliasConfig = createJestConfig()
