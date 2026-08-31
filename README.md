@@ -39,30 +39,28 @@ module.exports = require('@infinitetoken/jest-config/react-native')({
 })
 ```
 
-```ts
-// jest.config.ts — Expo app (real apps in this fleet use .ts, not .cjs, for jest config)
-import type { Config } from 'jest'
-
-import createExpoJestConfig from '@infinitetoken/jest-config/expo'
-
-// The explicit `Config` annotation is required, not stylistic — see "Expo app gotchas" below.
-const config: Config = createExpoJestConfig({
-  setupFilesAfterEnv: ['./jest.setup.ts'],
+```js
+// jest.config.cjs — Expo app
+module.exports = require('@infinitetoken/jest-config/expo')({
   paths: ['app', 'components', 'constants', 'hooks', 'redux', 'utils'],
   moduleNameMapper: {
     '^@/types$': '<rootDir>/src/types/index.ts'
   }
 })
-
-export default config
 ```
 
-### Expo app gotchas (`jest.config.ts`)
+### Why `.cjs`, not `.ts` — Expo apps included
 
-Two non-obvious things every Expo app hits when adopting `/expo`, confirmed by migrating a real app (Crumby) rather than assumed:
+Every real consumer, `/expo` included, uses plain `jest.config.cjs`, matching `/node`/`/react-native`. `setupFilesAfterEnv` needs no entry either — your app's own `jest.setup.{js,mjs,cjs,ts}` is auto-detected on disk, whichever extension it actually is (see `createExpoJestConfig`'s own JSDoc). That's a genuinely different question from `jest.config.*`'s own extension, addressed below.
 
-1. **`export default createExpoJestConfig(...)` directly, with no type annotation, fails to typecheck** (`TS4082`/`TS2883`, "cannot be named without a reference to ConfigGlobals" or similar). `import type {Config} from 'jest'` — Jest's own documented pattern — is itself not fully portable for TypeScript's declaration-emit checking; it structurally touches unexported internal types (`@jest/types`' `ConfigGlobals`, several `istanbul-reports` option types) that can't be printed in an emitted `.d.ts`. This only bites under `declaration: true` (this fleet's own base tsconfig preset), and only when the export's type is *inferred* through a call rather than stated directly. Assigning to an explicitly-typed `const config: Config = ...` first sidesteps it — TypeScript then only needs to reference `Config` by its (importable) name, not print its structure. Confirmed with a minimal reproduction outside any app before writing this.
-2. **Jest loads `.ts` config files via `ts-node`, which cannot resolve a tsconfig `extends` through a package's `exports` map at all** — confirmed directly, failing even on `extends: "@infinitetoken/tsconfig"` (the bare export), regardless of the installed `typescript` version (which resolves the identical `extends` fine on its own via plain `tsc` — this is a `ts-node@10.9.2`-specific gap, not a TypeScript version issue). Since a real Expo app's own `tsconfig.json` extends `@infinitetoken/tsconfig/expo` the same way, `ts-node` fails to even load `jest.config.ts` with `TS6053: File '@infinitetoken/tsconfig/expo' not found` the moment both migrations land together. Fix: a separate, deliberately non-extending `tsconfig.jest.json` for `ts-node`'s own use, wired in via `TS_NODE_PROJECT=./tsconfig.jest.json` on the `test`/`test:watch` scripts — decouples `jest.config.ts`'s own transpilation from the real app tsconfig, which keeps extending the shared preset normally for actual typechecking/builds. See Crumby's `tsconfig.jest.json` for a working minimal example.
+This wasn't always the convention: every Expo app in the fleet originally used `jest.config.ts` (`import type {Config} from 'jest'`, `const config: Config = createExpoJestConfig(...)`, `export default config`), while every library/kit package used plain `.cjs`. That split produced two real, non-obvious failures, confirmed by migrating real apps rather than assumed:
+
+1. **`export default createExpoJestConfig(...)` directly, with no type annotation, failed to typecheck** (`TS4082`/`TS2883`, "cannot be named without a reference to ConfigGlobals" or similar). `import type {Config} from 'jest'` — Jest's own documented pattern — is itself not fully portable for TypeScript's declaration-emit checking; it structurally touches unexported internal types (`@jest/types`' `ConfigGlobals`, several `istanbul-reports` option types) that can't be printed in an emitted `.d.ts`. This only bit under `declaration: true` (this fleet's own base tsconfig preset), and only when the export's type was *inferred* through a call rather than stated directly.
+2. **Jest loads `.ts` config files via `ts-node`, which cannot resolve a tsconfig `extends` through a package's `exports` map at all** — confirmed directly, failing even on `extends: "@infinitetoken/tsconfig"` (the bare export), regardless of the installed `typescript` version (which resolves the identical `extends` fine on its own via plain `tsc` — a `ts-node@10.9.2`-specific gap, not a TypeScript version issue). Since a real Expo app's own `tsconfig.json` extends `@infinitetoken/tsconfig/expo` the same way, `ts-node` failed to even load `jest.config.ts` with `TS6053: File '@infinitetoken/tsconfig/expo' not found` the moment both migrations landed together. Worked around with a separate, deliberately non-extending `tsconfig.jest.json` plus `TS_NODE_PROJECT=./tsconfig.jest.json` on the `test`/`test:watch` scripts.
+
+Both problems are specific to `.ts` config files going through `ts-node`. Neither exists for `.cjs` — plain `require()`, no transpilation step, nothing to typecheck (matching `eslint.config.cjs`, which was already `.cjs` for every app and never had either issue). Switching Expo apps to `.cjs` — confirmed directly against three real apps (Swirlio, LightCycles, BoxHockey), full lint/typecheck/test suites passing — eliminated both gotchas and their workarounds outright: no `tsconfig.jest.json`, no `TS_NODE_PROJECT`, no `ts-node` devDependency, no `Config` type annotation. The lesson generalizes past this one file: an Expo app doing something every other Expo app also does isn't itself evidence it's the right call — the whole fleet had a single un-scrutinized template decision here that nobody had actually compared against the rest of the fleet's own `.cjs` convention until it was.
+
+**`jest.setup.*` followed, for the same reason, even though it never had either bug.** Auto-detection genuinely supports `.js`/`.mjs`/`.cjs`/`.ts` (see below) — an app isn't forced onto one, and a `.ts` setup file works fine, since `setupFilesAfterEnv` entries go through Jest's own test transform rather than `ts-node`. But every real app converted it to `.cjs` anyway, once its content shrank down to thin, low-stakes boilerplate (the mock factories that used to live there moved into typed `src/__mocks__/*.ts` files — see the "Libraries vs. apps" note above) and the remaining question was just "why have two different hand-authored config extensions in the same app when one will do." Confirmed the same way as `jest.config.cjs`: full lint/typecheck/test passing against all three real apps.
 
 ### Options — `/node` / `/react-native`
 
@@ -84,7 +82,7 @@ Defaulted (every package in the fleet used the same values, so these are no long
 
 ### Options — `./expo`
 
-- `setupFilesAfterEnv` — your app's own setup files (typically just `'<rootDir>/jest.setup.ts'`), always supplied by you — never defaulted, since it's substantial per-app content (native module mocks, redux-persist mocks, etc.), not shareable boilerplate. **Not** auto-prefixed with the shared `unhandledRejection` logger the way the library presets are — every app's own `jest.setup.ts` already installs its own (usually covering `uncaughtException` too), so adding a second one would just be duplicate noise.
+- `setupFilesAfterEnv` — for ADDITIONAL setup files only. Your app's own `jest.setup.{js,mjs,cjs,ts}` is auto-detected on disk (whichever extension you actually have — an app isn't forced onto one; `.cjs` and `.ts` are both confirmed working, since this goes through Jest's own test transform, unlike `jest.config.*` itself — see above) and prepended automatically; this option never needs to name it. **Not** auto-prefixed with the shared `unhandledRejection` logger the way the library presets are — every app's own setup file already installs its own (usually covering `uncaughtException` too), so adding a second one would just be duplicate noise.
 - `gestureHandlerSetup` — appends `'<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'` after your setup files. Default `true`. Set `false` if the app doesn't depend on `react-native-gesture-handler`.
 - `paths` — directory segments under `src/` to alias, e.g. `['app', 'components', 'hooks']` generates `'^@/app/(.*)$': '<rootDir>/src/app/$1'` etc. for each. Only needed for an alias not already in `tsconfig.json`'s own `paths` (see [above](#path-aliases--are-picked-up-automatically)) — most apps that declare `"@/*": ["./src/*"]` in `tsconfig.json` need neither this nor `aliasCatchAll` at all.
 - `aliasCatchAll` — also add `'^@/(.*)$': '<rootDir>/src/$1'` as a fallback after the specific aliases. Default `false`. Same note as `paths` — usually superseded by the tsconfig-derived alias.

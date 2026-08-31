@@ -63,9 +63,9 @@ const createNodeJestConfig = require('@infinitetoken/jest-config/node')
 assert.equal(createNodeJestConfig, createJestConfig, './node should resolve to the exact same module as the direct src/node.cjs require')
 console.log('./node (subpath resolution): OK')
 
-const expo = createExpoJestConfig({ paths: ['components', 'hooks'], setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'] })
+const expo = createExpoJestConfig({ paths: ['components', 'hooks'], setupFilesAfterEnv: ['<rootDir>/other-setup.cjs'] })
 assert.equal(expo.preset, 'jest-expo', 'expo preset should use jest-expo')
-assert.deepEqual(expo.setupFilesAfterEnv, ['<rootDir>/jest.setup.ts', '<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'], 'expo preset should append gesture-handler setup after the caller setup by default')
+assert.deepEqual(expo.setupFilesAfterEnv, ['<rootDir>/other-setup.cjs', '<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'], 'expo preset should append gesture-handler setup after the caller setup by default')
 assert.deepEqual(expo.transformIgnorePatterns, [], 'expo preset should transform all of node_modules')
 assert.equal(expo.moduleNameMapper['^@/components/(.*)$'], '<rootDir>/src/components/$1', 'expo preset should generate path aliases from the paths option')
 assert.ok(expo.transform['\\.mjs$'], 'expo preset should add a .mjs transform for dual ESM/CJS packages')
@@ -74,7 +74,12 @@ assert.equal(expo.coverageDirectory, base.coverageDirectory, 'expo preset should
 assert.deepEqual(expo.coverageReporters, base.coverageReporters, 'expo preset should share the same coverageReporters as node.cjs')
 assert.equal(expo.collectCoverage, undefined, 'expo preset should NOT default collectCoverage to true — verified against a real consuming app that library-level 70% enforcement would break every real app on upgrade, apps and libraries are not the same category of consumer here')
 assert.equal(expo.coverageThreshold, undefined, 'expo preset should NOT default a coverageThreshold — same reasoning as collectCoverage above')
+assert.deepEqual(expo.roots, ['<rootDir>/src'], 'expo preset should default roots to src/, same as node.cjs, so a manual __mocks__/ directory is picked up from src/__mocks__/ (next to src/__tests__/) rather than the repo root, and so Jest never crawls .claude/worktrees/ for its haste map')
 console.log('expo.cjs: OK')
+
+const expoWithRootsOverride = createExpoJestConfig({ overrides: { roots: ['<rootDir>'] } })
+assert.deepEqual(expoWithRootsOverride.roots, ['<rootDir>'], 'roots should be overridable via overrides for an app that genuinely needs a different scope')
+console.log('expo.cjs (roots override): OK')
 
 const expoNoGestureHandler = createExpoJestConfig({ gestureHandlerSetup: false })
 assert.deepEqual(expoNoGestureHandler.setupFilesAfterEnv, [], 'gestureHandlerSetup: false should omit the gesture-handler setup file')
@@ -108,6 +113,49 @@ try {
 } finally {
   process.chdir(originalCwd)
   fs.rmSync(scratchDir, { recursive: true, force: true })
+}
+
+// jest.setup.* auto-detection — also reads process.cwd(), same scratch-dir technique as above.
+const setupScratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jest-config-setup-detection-test-'))
+try {
+  process.chdir(setupScratchDir)
+
+  const expoNoSetupFile = createExpoJestConfig()
+  assert.deepEqual(expoNoSetupFile.setupFilesAfterEnv, ['<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'], 'expo preset should not reference jest.setup.* when no matching file exists on disk')
+  console.log('expo.cjs (no jest.setup.* on disk): OK')
+
+  fs.writeFileSync(path.join(setupScratchDir, 'jest.setup.ts'), '')
+
+  const expoWithSetupFile = createExpoJestConfig()
+  assert.deepEqual(expoWithSetupFile.setupFilesAfterEnv, ['<rootDir>/jest.setup.ts', '<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'], 'expo preset should auto-detect jest.setup.ts and prepend it, with no setupFilesAfterEnv option needed')
+  console.log('expo.cjs (jest.setup.ts auto-detection): OK')
+
+  const expoWithRedundantExplicit = createExpoJestConfig({ setupFilesAfterEnv: ['./jest.setup.ts'] })
+  assert.deepEqual(expoWithRedundantExplicit.setupFilesAfterEnv, ['<rootDir>/jest.setup.ts', '<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'], 'an app that has not yet removed its own now-redundant setupFilesAfterEnv: ["./jest.setup.ts"] should not get the file listed twice under two different spellings — would otherwise double-register jest.setup.ts\'s process.on() handlers')
+  console.log('expo.cjs (auto-detection dedupes against a redundant explicit ./jest.setup.ts): OK')
+
+  const expoWithAdditionalSetup = createExpoJestConfig({ setupFilesAfterEnv: ['<rootDir>/other-setup.ts'] })
+  assert.deepEqual(expoWithAdditionalSetup.setupFilesAfterEnv, ['<rootDir>/jest.setup.ts', '<rootDir>/other-setup.ts', '<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'], 'a genuinely additional setup file should still run, after the auto-detected jest.setup.ts')
+  console.log('expo.cjs (auto-detected jest.setup.ts plus a genuinely additional setup file): OK')
+
+  // An app isn't forced onto .ts — .cjs (or .js/.mjs) works exactly the same way, checked in the
+  // same scratch dir immediately after removing the .ts one, so only one candidate exists at a time.
+  fs.rmSync(path.join(setupScratchDir, 'jest.setup.ts'))
+  fs.writeFileSync(path.join(setupScratchDir, 'jest.setup.cjs'), '')
+  const expoWithCjsSetupFile = createExpoJestConfig()
+  assert.deepEqual(expoWithCjsSetupFile.setupFilesAfterEnv, ['<rootDir>/jest.setup.cjs', '<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'], 'expo preset should auto-detect jest.setup.cjs exactly the same way as jest.setup.ts — an app is not forced onto one extension')
+  console.log('expo.cjs (jest.setup.cjs auto-detection): OK')
+
+  // With both present, .cjs wins — matches the priority order in the candidate list (js, mjs, cjs,
+  // ts). Not a meaningful real-world case (no real app has both), but the order should still be
+  // deterministic and documented by a test rather than left as an implementation accident.
+  fs.writeFileSync(path.join(setupScratchDir, 'jest.setup.ts'), '')
+  const expoWithBothSetupFiles = createExpoJestConfig()
+  assert.deepEqual(expoWithBothSetupFiles.setupFilesAfterEnv, ['<rootDir>/jest.setup.cjs', '<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'], 'with both jest.setup.cjs and jest.setup.ts present, .cjs should win — deterministic priority order, not an accident of file-system enumeration')
+  console.log('expo.cjs (jest.setup.cjs takes priority over jest.setup.ts when both exist): OK')
+} finally {
+  process.chdir(originalCwd)
+  fs.rmSync(setupScratchDir, { recursive: true, force: true })
 }
 
 // A catch-all declared BEFORE more specific segment aliases (a real pattern found in a real
