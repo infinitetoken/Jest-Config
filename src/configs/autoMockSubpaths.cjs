@@ -1,4 +1,3 @@
-/* global jest */
 const path = require('node:path')
 const { registerSubpathMocks } = require('../utils/registerSubpathMocks.cjs')
 
