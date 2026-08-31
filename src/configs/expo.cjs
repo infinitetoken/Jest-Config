@@ -99,6 +99,7 @@ function createExpoJestConfig(options = {}) {
   return {
     preset: 'jest-expo',
     roots,
+    setupFiles: [require.resolve('./autoMockSubpaths.cjs')],
     setupFilesAfterEnv: [...detectedSetup, ...explicitSetupFilesAfterEnv, ...(gestureHandlerSetup ? ['<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'] : [])],
     transformIgnorePatterns: [],
     testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/worktrees/'],
