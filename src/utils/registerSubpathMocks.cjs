@@ -2,7 +2,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 /**
- * PROTOTYPE — not yet wired into any preset. See Jest-Config's own investigation notes.
+ * Wired into expo.cjs's setupFiles — confirmed live and correctly engaging subpath mocks across
+ * multiple real consuming apps (Lumber, Setter, UniScan), not just asserted from this file alone.
  *
  * Walks a consumer's src/__mocks__ directory and calls jest.mock(specifier) for every manual
  * mock file that mocks a deep SUBPATH of a node_modules package (e.g. src/__mocks__/redux-persist/
