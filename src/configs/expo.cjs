@@ -57,6 +57,7 @@ function createExpoJestConfig(options = {}) {
   const { resolveBabelOptions } = require('jest-expo/src/resolveBabelOptions')
   const { readPathAliasMapper } = require('../utils/pathAliases.cjs')
   const { coverageDefaults } = require('../utils/coverageDefaults.cjs')
+  const { workerDefaults } = require('../utils/workerDefaults.cjs')
 
   const pathAliases = Object.fromEntries(paths.map((segment) => [`^@/${segment}/(.*)$`, `<rootDir>/src/${segment}/$1`]))
 
@@ -132,6 +133,11 @@ function createExpoJestConfig(options = {}) {
     collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
     coverageDirectory: coverageDefaults.coverageDirectory,
     coverageReporters: coverageDefaults.coverageReporters,
+    // Unlike collectCoverage/coverageThreshold above, maxWorkers applies identically to apps and
+    // libraries — an oversubscribed machine starves a heavy app-screen render exactly the same way
+    // it starves a heavy library test, so this is spread wholesale rather than picked apart like
+    // the coverage keys are. See workerDefaults.cjs for the full reasoning and verification.
+    ...workerDefaults,
     ...overrides
   }
 }

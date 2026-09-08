@@ -1,5 +1,6 @@
 const { readPathAliasMapper } = require('../utils/pathAliases.cjs')
 const { coverageDefaults } = require('../utils/coverageDefaults.cjs')
+const { workerDefaults } = require('../utils/workerDefaults.cjs')
 
 /**
  * Base Jest preset for InfiniteToken npm packages (Node test environment).
@@ -57,6 +58,7 @@ function createJestConfig(options = {}) {
     setupFilesAfterEnv: [require.resolve('./setup.cjs'), ...setupFilesAfterEnv],
     testTimeout: 10000,
     verbose: true,
+    ...workerDefaults,
     // .tsx is included unconditionally: for a pure-.ts package the glob just matches the
     // same files it always did (a strict superset, never a behavior change), while every
     // React/React Native package in the fleet has real .tsx source that this would otherwise
