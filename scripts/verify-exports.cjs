@@ -18,6 +18,7 @@ assert.ok(base.setupFilesAfterEnv.length > 0, 'base preset should inject shared 
 assert.equal(base.transform['^.+\\.tsx?$'][1].tsconfig.types.includes('jest'), true, 'base preset should default tsconfig types')
 assert.equal(base.testTimeout, 10000, 'base preset should default testTimeout')
 assert.equal(base.verbose, true, 'base preset should default verbose')
+assert.equal(base.maxWorkers, '50%', 'base preset should default maxWorkers to a percentage (not a fixed number) so heavy suites do not oversubscribe whatever machine actually runs them')
 assert.deepEqual(base.collectCoverageFrom, ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.ts'], 'base preset should default collectCoverageFrom to include .tsx and should not need a redundant __tests__ exclude (Jest already excludes testMatch files from coverage)')
 assert.equal(base.coverageDirectory, 'coverage', 'base preset should default coverageDirectory')
 assert.deepEqual(base.coverageReporters, ['text', 'lcov', 'html'], 'base preset should default coverageReporters')
@@ -45,12 +46,14 @@ const withOverrides = createJestConfig({
   overrides: {
     forceExit: true,
     testTimeout: 20000,
+    maxWorkers: 2,
     coverageThreshold: { global: { branches: 0, functions: 0, lines: 0, statements: 0 } },
     collectCoverageFrom: ['lib/**/*.ts', '!lib/**/*.d.ts']
   }
 })
 assert.equal(withOverrides.forceExit, true, 'overrides should be shallow-merged last')
 assert.equal(withOverrides.testTimeout, 20000, 'overrides should be able to deviate from the default testTimeout')
+assert.equal(withOverrides.maxWorkers, 2, 'overrides should be able to deviate from the default maxWorkers (e.g. CI, where a fixed number may fit the runner better than a percentage)')
 assert.deepEqual(withOverrides.coverageThreshold, { global: { branches: 0, functions: 0, lines: 0, statements: 0 } }, 'overrides should be able to deviate from the default coverageThreshold')
 assert.deepEqual(withOverrides.collectCoverageFrom, ['lib/**/*.ts', '!lib/**/*.d.ts'], 'overrides should be able to deviate from the default collectCoverageFrom (e.g. for a package that does not use the src/ convention)')
 console.log('overrides: OK')
@@ -75,6 +78,7 @@ assert.deepEqual(expo.coverageReporters, base.coverageReporters, 'expo preset sh
 assert.equal(expo.collectCoverage, undefined, 'expo preset should NOT default collectCoverage to true — verified against a real consuming app that library-level 70% enforcement would break every real app on upgrade, apps and libraries are not the same category of consumer here')
 assert.equal(expo.coverageThreshold, undefined, 'expo preset should NOT default a coverageThreshold — same reasoning as collectCoverage above')
 assert.deepEqual(expo.roots, ['<rootDir>/src'], 'expo preset should default roots to src/, same as node.cjs, so a manual __mocks__/ directory is picked up from src/__mocks__/ (next to src/__tests__/) rather than the repo root, and so Jest never crawls .claude/worktrees/ for its haste map')
+assert.equal(expo.maxWorkers, '50%', 'expo preset should share the same maxWorkers default as node.cjs — unlike collectCoverage/coverageThreshold, oversubscription punishes a heavy app-screen render exactly the same way it punishes a heavy library test, so there is no apps-vs-libraries exception here')
 console.log('expo.cjs: OK')
 
 const expoWithRootsOverride = createExpoJestConfig({ overrides: { roots: ['<rootDir>'] } })
