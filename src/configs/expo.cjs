@@ -29,6 +29,30 @@
  *   '<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js' after
  *   the caller's own setup files. Default true (every app surveyed needs it);
  *   set false for an app that doesn't depend on react-native-gesture-handler.
+ * @param {boolean} [options.knownSubpathMocks] - register jest.mock() (with
+ *   { virtual: true }) for a small, fixed table of known-offender deep subpath
+ *   imports (currently '@rific/feedback-press/audio' and
+ *   '@shopify/react-native-skia/src/web' — see knownSubpathMocks.cjs) that
+ *   Jest's manual __mocks__/ auto-pickup can never catch on its own, since that
+ *   convention only matches a bare package specifier, never a subpath. Default
+ *   true; safe even for an app that depends on neither package, since
+ *   virtual:true means neither ever needs to resolve for real. Set false for
+ *   an app that wants neither stub (e.g. one exercising the real module on
+ *   purpose) — an app that wants a DIFFERENT stub for one of these two
+ *   specifiers doesn't need this at all, since its own jest.setup.cjs
+ *   jest.mock() call already runs after this (setupFiles always finishes
+ *   before setupFilesAfterEnv) and simply wins.
+ * @param {boolean} [options.asyncStorageMock] - map the bare
+ *   '@react-native-async-storage/async-storage' specifier to the package's own
+ *   official Jest mock (a real in-memory store) via moduleNameMapper, so a
+ *   consumer gets genuine write-then-reload test coverage instead of hand-
+ *   rolling an inert every-method-resolves-to-null stub. Default true;
+ *   resolved via a guarded require.resolve() (see asyncStorageMock.cjs), so
+ *   this is a total no-op — no mapping entry added, nothing thrown — for an
+ *   app that doesn't depend on the package at all. Set false to keep using
+ *   your own moduleNameMapper entry or src/__mocks__/ file for this specifier
+ *   (or just pass your own via the `moduleNameMapper` option below, which
+ *   always merges on top of this default anyway).
  * @param {string[]} [options.roots] - same default and reasoning as node.cjs's
  *   own `roots`: scopes Jest's haste/module crawl (and therefore where a
  *   manual `__mocks__/` directory is picked up automatically) to src/, so
@@ -50,7 +74,7 @@
  * @returns {import('jest').Config}
  */
 function createExpoJestConfig(options = {}) {
-  const { setupFilesAfterEnv = [], gestureHandlerSetup = true, roots = ['<rootDir>/src'], paths = [], aliasCatchAll = false, moduleNameMapper = {}, overrides = {} } = options
+  const { setupFilesAfterEnv = [], gestureHandlerSetup = true, knownSubpathMocks = true, asyncStorageMock = true, roots = ['<rootDir>/src'], paths = [], aliasCatchAll = false, moduleNameMapper = {}, overrides = {} } = options
 
   const fs = require('node:fs')
   const path = require('node:path')
@@ -58,6 +82,9 @@ function createExpoJestConfig(options = {}) {
   const { readPathAliasMapper } = require('../utils/pathAliases.cjs')
   const { coverageDefaults } = require('../utils/coverageDefaults.cjs')
   const { workerDefaults } = require('../utils/workerDefaults.cjs')
+  const { resolveAsyncStorageMockPath } = require('../utils/asyncStorageMock.cjs')
+
+  const asyncStorageMockPath = asyncStorageMock ? resolveAsyncStorageMockPath() : null
 
   const pathAliases = Object.fromEntries(paths.map((segment) => [`^@/${segment}/(.*)$`, `<rootDir>/src/${segment}/$1`]))
 
@@ -100,7 +127,12 @@ function createExpoJestConfig(options = {}) {
   return {
     preset: 'jest-expo',
     roots,
-    setupFiles: [require.resolve('./autoMockSubpaths.cjs')],
+    // registerKnownSubpathMocks.cjs runs after autoMockSubpaths.cjs, so it wins for either
+    // specifier over an app's now-redundant local src/__mocks__/ file for the same subpath during
+    // the migration window before that file is deleted — see knownSubpathMocks.cjs for the full
+    // reasoning and why { virtual: true } makes this safe to default on even for an app that
+    // depends on neither underlying package.
+    setupFiles: [require.resolve('./autoMockSubpaths.cjs'), ...(knownSubpathMocks ? [require.resolve('./registerKnownSubpathMocks.cjs')] : [])],
     setupFilesAfterEnv: [...detectedSetup, ...explicitSetupFilesAfterEnv, ...(gestureHandlerSetup ? ['<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'] : [])],
     transformIgnorePatterns: [],
     testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/worktrees/'],
@@ -109,6 +141,11 @@ function createExpoJestConfig(options = {}) {
     },
     moduleNameMapper: {
       ...readPathAliasMapper(),
+      // Only present when @react-native-async-storage/async-storage actually resolves (see
+      // asyncStorageMock.cjs) — omitted entirely otherwise, so this is a true no-op default for
+      // an app that doesn't depend on the package at all. Ordered before pathAliases/moduleNameMapper
+      // below so either can still override it for an app that wants its own async-storage mock.
+      ...(asyncStorageMockPath ? { '^@react-native-async-storage/async-storage$': asyncStorageMockPath } : {}),
       ...pathAliases,
       ...(aliasCatchAll ? { '^@/(.*)$': '<rootDir>/src/$1' } : {}),
       ...moduleNameMapper
