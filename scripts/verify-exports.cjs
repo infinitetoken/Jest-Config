@@ -81,6 +81,48 @@ assert.deepEqual(expo.roots, ['<rootDir>/src'], 'expo preset should default root
 assert.equal(expo.maxWorkers, '50%', 'expo preset should share the same maxWorkers default as node.cjs — unlike collectCoverage/coverageThreshold, oversubscription punishes a heavy app-screen render exactly the same way it punishes a heavy library test, so there is no apps-vs-libraries exception here')
 console.log('expo.cjs: OK')
 
+assert.ok(
+  expo.setupFiles.some((f) => f.includes('registerKnownSubpathMocks.cjs')),
+  'expo preset should wire in the known-offender subpath mocks (e.g. @rific/feedback-press/audio, @shopify/react-native-skia/src/web) by default'
+)
+console.log('expo.cjs (known subpath mocks wired in by default): OK')
+
+const expoNoKnownSubpathMocks = createExpoJestConfig({ knownSubpathMocks: false })
+assert.ok(!expoNoKnownSubpathMocks.setupFiles.some((f) => f.includes('registerKnownSubpathMocks.cjs')), 'knownSubpathMocks: false should omit the known-offender subpath mocks setup file entirely')
+console.log('expo.cjs (knownSubpathMocks: false): OK')
+
+// @react-native-async-storage/async-storage is not a dependency of this repo at all (confirmed:
+// no node_modules/@react-native-async-storage anywhere on this package's own resolution path) —
+// exercising the real, unmodified default here doubles as proof it never throws for a consumer
+// that doesn't have the package installed, the same concern this preset's CLAUDE.md documents for
+// jest-environment-jsdom/jest-expo's own peerDependenciesMeta.optional, just one level down.
+assert.equal(expo.moduleNameMapper['^@react-native-async-storage/async-storage$'], undefined, 'expo preset should omit the async-storage moduleNameMapper entry (rather than throwing at config-build time) when the package is not installed — true for this repo itself')
+console.log('expo.cjs (async-storage mock — omitted when package not installed): OK')
+
+// Now simulate the package actually being installed: require.resolve() walks up from
+// asyncStorageMock.cjs's own location through this package's own node_modules — exactly the same
+// directory chain it would walk from inside a real consuming app's node_modules/@infinitetoken/
+// jest-config — so a scratch fixture dropped into THIS repo's own node_modules exercises the real
+// resolution path (unlike the tsconfig-paths fixtures below, which key off process.cwd() instead).
+const fakeAsyncStorageRoot = path.join(__dirname, '..', 'node_modules', '@react-native-async-storage', 'async-storage')
+try {
+  fs.mkdirSync(path.join(fakeAsyncStorageRoot, 'jest'), { recursive: true })
+  fs.writeFileSync(path.join(fakeAsyncStorageRoot, 'package.json'), JSON.stringify({ name: '@react-native-async-storage/async-storage', version: '0.0.0-fixture', main: 'index.js' }))
+  fs.writeFileSync(path.join(fakeAsyncStorageRoot, 'index.js'), 'module.exports = {}')
+  fs.writeFileSync(path.join(fakeAsyncStorageRoot, 'jest', 'async-storage-mock.js'), 'module.exports = {}')
+
+  const expoWithAsyncStorageInstalled = createExpoJestConfig()
+  const mappedPath = expoWithAsyncStorageInstalled.moduleNameMapper['^@react-native-async-storage/async-storage$']
+  assert.equal(mappedPath, path.join(fakeAsyncStorageRoot, 'jest', 'async-storage-mock.js'), "expo preset should map the bare specifier to the package's own official jest mock once the package is actually installed")
+  console.log('expo.cjs (async-storage mock — mapped to the real package jest mock when installed): OK')
+
+  const expoWithAsyncStorageDisabled = createExpoJestConfig({ asyncStorageMock: false })
+  assert.equal(expoWithAsyncStorageDisabled.moduleNameMapper['^@react-native-async-storage/async-storage$'], undefined, "asyncStorageMock: false should omit the mapping even when the package is installed, leaving the specifier free for the consumer's own moduleNameMapper entry or src/__mocks__/ file")
+  console.log('expo.cjs (asyncStorageMock: false): OK')
+} finally {
+  fs.rmSync(path.join(__dirname, '..', 'node_modules', '@react-native-async-storage'), { recursive: true, force: true })
+}
+
 const expoWithRootsOverride = createExpoJestConfig({ overrides: { roots: ['<rootDir>'] } })
 assert.deepEqual(expoWithRootsOverride.roots, ['<rootDir>'], 'roots should be overridable via overrides for an app that genuinely needs a different scope')
 console.log('expo.cjs (roots override): OK')
