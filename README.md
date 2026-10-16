@@ -115,3 +115,9 @@ git push --follow-tags
 ## React Native preset: ts-jest transpiles only (2026-10-16)
 
 The react-native preset sets `isolatedModules: true` (with `module`/`moduleResolution: node16`, since TypeScript 6 rejects the base preset's deprecated node10 even when nothing is type-checked) in ts-jest's tsconfig, so tests are transpiled, not type-checked. Each package's `tsc` step in `verify` type-checks `src/` (tests included) through `@infinitetoken/tsconfig`, which reads `exports` maps. ts-jest's own check used node10 resolution, which can't see React Native 0.88's types (shipped only through `exports`). 0.5.0 tried node16 resolution instead; ts-jest only supports that under `isolatedModules`, and without it libraries like Reanimated lost their types, so 0.5.1 uses this instead.
+
+## Expo SDK 58 notes (2026-10-16)
+
+- Install `@react-native/jest-preset` (`^0.88.0`) as a devDependency in every SDK 58 app. jest-expo 58 needs it as a peer, and without it every rendering test fails to resolve React Native 0.88's `exports`-only subpaths.
+- The expo preset adds `jestExpoCompat.cjs` to `setupFiles`, which points React Native 0.88's new `src/private/assets/AssetRegistry` at jest-expo's asset-registry mock (jest-expo 58.0.11 mocks only the old module). It does nothing on older React Native. See TODO.md.
+

@@ -11,3 +11,12 @@ The react-native preset now transpiles only (2026-10-16, 0.5.1), so it no longer
 ## Other React Native packages pick up transpile-only tests on their next bump
 
 0.5.1 (2026-10-16) was checked against auto-paper, toaster, drawer and scroll-view. Every other package on the react-native preset (hud, profile, core, cards, sprites, split-screen, feedback-press, edge-guard, focus-chain, heatmap, timer, splash-gate, updater, achievements, input, physics, grid, resizable-input, scanner) gets it when it next updates jest-config; run its full `verify` then. A type error that only showed up through ts-jest (a test file outside `tsc`'s `include`) would now pass silently, so check each package's tsconfig `include` covers `src/__tests__`.
+
+## Drop jestExpoCompat.cjs's AssetRegistry mock once jest-expo mocks the new module
+
+Added 2026-10-16 (0.5.2). React Native 0.88 moved `AssetRegistry` to `src/private/assets/AssetRegistry`, and jest-expo 58.0.11 still mocks only `react-native/asset-registry`, so in an SDK 58 app every `Asset.fromModule()` (expo-font, `@expo/vector-icons` on mount) threw `Module "1" is missing from the asset registry`. `src/configs/jestExpoCompat.cjs` points the new module at jest-expo's mock. On each jest-expo update, check its `src/preset/setup.js`; once it mocks `react-native/src/private/assets/AssetRegistry` (or `AssetRegistry` from `react-native`), delete that block (and the file, if it's the last one).
+
+## SDK 58 apps need `@react-native/jest-preset` installed
+
+jest-expo 58 loads `@react-native/jest-preset` (a peer, `^0.88.0`) and falls back to the old `react-native/jest-preset` without it, which can't resolve React Native 0.88's `exports`-only subpaths (`react-native/setup-env`, `react-native/react-private-interface`): every rendering test fails with "Could not locate module ... mapped as .../react-native/$1". The fleet's `.npmrc` sets `legacy-peer-deps`, so npm never installs it. Each app moving to SDK 58 has to add it as a devDependency; consider failing fast in `expo.cjs` with that message when jest-expo is 58+ and the peer is missing.
+

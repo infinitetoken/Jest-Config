@@ -132,7 +132,7 @@ function createExpoJestConfig(options = {}) {
     // the migration window before that file is deleted — see knownSubpathMocks.cjs for the full
     // reasoning and why { virtual: true } makes this safe to default on even for an app that
     // depends on neither underlying package.
-    setupFiles: [require.resolve('./autoMockSubpaths.cjs'), ...(knownSubpathMocks ? [require.resolve('./registerKnownSubpathMocks.cjs')] : [])],
+    setupFiles: [require.resolve('./autoMockSubpaths.cjs'), ...(knownSubpathMocks ? [require.resolve('./registerKnownSubpathMocks.cjs')] : []), require.resolve('./jestExpoCompat.cjs')],
     setupFilesAfterEnv: [...detectedSetup, ...explicitSetupFilesAfterEnv, ...(gestureHandlerSetup ? ['<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js'] : [])],
     transformIgnorePatterns: [],
     testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/worktrees/'],
