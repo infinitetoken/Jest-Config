@@ -15,7 +15,13 @@ function createReactNativeJestConfig(options = {}) {
   return createJestConfig({
     testEnvironment: 'jsdom',
     testMatch: testMatch || ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
-    tsconfig: typeof tsconfig === 'string' ? tsconfig : { jsx: 'react-jsx', lib: ['ES2020', 'DOM'], ...tsconfig },
+    // node16 resolution (not the base preset's node10) because React Native 0.88 ships its types
+    // only through its package.json `exports` map, which node10 can't read (TS7016 on every
+    // `import ... from 'react-native'`). Safe here: every React Native package in the fleet is
+    // "type": "commonjs", so node16 still compiles them as CommonJS. The legacy-deep-imports
+    // condition mirrors @infinitetoken/tsconfig 0.6's /react-native preset (React Native 0.88's
+    // pre-strict types) and comes out with it, see TODO.md.
+    tsconfig: typeof tsconfig === 'string' ? tsconfig : { jsx: 'react-jsx', lib: ['ES2020', 'DOM'], module: 'Node16', moduleResolution: 'node16', customConditions: ['react-native-legacy-deep-imports'], ...tsconfig },
     // jest-environment-jsdom hardcodes customExportConditions to ['browser'] by default (its own
     // built-in default, unrelated to Metro). Several fleet packages (@tastic/core, @tastic/profile,
     // @tastic/hud, confirmed via their own package.json — likely more over time) define a "browser"

@@ -55,7 +55,7 @@
     "ts-jest": "^29.4.11"
   },
   "devDependencies": {
-    "@infinitetoken/eslint-config": "^0.1.4",
+    "@infinitetoken/eslint-config": "^0.2.0",
     "babel-jest": "^29.7.0",
     "babel-preset-expo": "^13.2.5",
     "eslint": "^10.2.1",

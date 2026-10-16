@@ -111,3 +111,8 @@ Tag-based, using npm trusted publishing (OIDC, no token required):
 npm version patch   # or minor / major
 git push --follow-tags
 ```
+
+## React Native preset: node16 resolution (2026-10-16)
+
+The react-native preset's ts-jest defaults use `module: 'Node16'` and `moduleResolution: 'node16'` (the node preset stays on node10). React Native 0.88 ships its types only through its `exports` map, which node10 can't read. They also add the `react-native-legacy-deep-imports` condition, matching `@infinitetoken/tsconfig` 0.6, which keeps React Native 0.88 on its pre-strict types until the fleet migrates (see TODO.md).
+
