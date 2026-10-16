@@ -15,13 +15,16 @@ function createReactNativeJestConfig(options = {}) {
   return createJestConfig({
     testEnvironment: 'jsdom',
     testMatch: testMatch || ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
-    // node16 resolution (not the base preset's node10) because React Native 0.88 ships its types
-    // only through its package.json `exports` map, which node10 can't read (TS7016 on every
-    // `import ... from 'react-native'`). Safe here: every React Native package in the fleet is
-    // "type": "commonjs", so node16 still compiles them as CommonJS. The legacy-deep-imports
-    // condition mirrors @infinitetoken/tsconfig 0.6's /react-native preset (React Native 0.88's
-    // pre-strict types) and comes out with it, see TODO.md.
-    tsconfig: typeof tsconfig === 'string' ? tsconfig : { jsx: 'react-jsx', lib: ['ES2020', 'DOM'], module: 'Node16', moduleResolution: 'node16', customConditions: ['react-native-legacy-deep-imports'], ...tsconfig },
+    // ts-jest only transpiles here (isolatedModules), it doesn't type-check: each package's own
+    // `tsc` step in `verify` already type-checks src/ including __tests__, through
+    // @infinitetoken/tsconfig, which reads `exports` maps. ts-jest's own check used node10
+    // resolution, which can't see React Native 0.88's types (they ship only through `exports`),
+    // so every `import ... from 'react-native'` failed with TS7016. 0.5.0 tried node16 here
+    // instead, but ts-jest supports that module kind only under isolatedModules, and without it
+    // libraries like Reanimated lost their types (implicit-any callbacks). node16 stays because,
+    // once nothing is type-checked, TypeScript 6 still rejects the base preset's deprecated node10
+    // setting; every React Native package here is "type": "commonjs", so the output is CommonJS.
+    tsconfig: typeof tsconfig === 'string' ? tsconfig : { jsx: 'react-jsx', lib: ['ES2020', 'DOM'], module: 'Node16', moduleResolution: 'node16', isolatedModules: true, ...tsconfig },
     // jest-environment-jsdom hardcodes customExportConditions to ['browser'] by default (its own
     // built-in default, unrelated to Metro). Several fleet packages (@tastic/core, @tastic/profile,
     // @tastic/hud, confirmed via their own package.json — likely more over time) define a "browser"

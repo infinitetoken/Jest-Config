@@ -112,7 +112,6 @@ npm version patch   # or minor / major
 git push --follow-tags
 ```
 
-## React Native preset: node16 resolution (2026-10-16)
+## React Native preset: ts-jest transpiles only (2026-10-16)
 
-The react-native preset's ts-jest defaults use `module: 'Node16'` and `moduleResolution: 'node16'` (the node preset stays on node10). React Native 0.88 ships its types only through its `exports` map, which node10 can't read. They also add the `react-native-legacy-deep-imports` condition, matching `@infinitetoken/tsconfig` 0.6, which keeps React Native 0.88 on its pre-strict types until the fleet migrates (see TODO.md).
-
+The react-native preset sets `isolatedModules: true` (with `module`/`moduleResolution: node16`, since TypeScript 6 rejects the base preset's deprecated node10 even when nothing is type-checked) in ts-jest's tsconfig, so tests are transpiled, not type-checked. Each package's `tsc` step in `verify` type-checks `src/` (tests included) through `@infinitetoken/tsconfig`, which reads `exports` maps. ts-jest's own check used node10 resolution, which can't see React Native 0.88's types (shipped only through `exports`). 0.5.0 tried node16 resolution instead; ts-jest only supports that under `isolatedModules`, and without it libraries like Reanimated lost their types, so 0.5.1 uses this instead.
